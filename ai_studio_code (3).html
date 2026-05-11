@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Mô phỏng Giải thuật Chèn (Insertion Sort)</title>
+    <style>
+        :root {
+            --primary: #3498db;
+            --secondary: #e67e22;
+            --success: #2ecc71;
+            --bg: #f4f7f6;
+            --code-bg: #2d3436;
+            --highlight: #f1c40f;
+        }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); display: flex; flex-direction: column; align-items: center; padding: 20px; }
+        h1 { color: #2c3e50; }
+
+        /* Container chính */
+        .main-container { display: flex; gap: 20px; width: 90%; max-width: 1000px; height: 500px; }
+
+        /* Vùng mô phỏng thanh */
+        .visualizer { flex: 1; background: white; border-radius: 8px; display: flex; align-items: flex-end; justify-content: center; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .bar { width: 30px; margin: 0 2px; background: var(--primary); transition: all 0.3s; position: relative; border-radius: 4px 4px 0 0; }
+        .bar-label { position: absolute; top: -25px; width: 100%; text-align: center; font-size: 12px; font-weight: bold; }
+
+        /* Vùng hiển thị code */
+        .code-panel { flex: 1; background: var(--code-bg); color: white; padding: 20px; border-radius: 8px; font-family: 'Courier New', Courier, monospace; font-size: 14px; overflow-y: auto; }
+        .code-line { padding: 2px 5px; border-radius: 3px; margin: 2px 0; opacity: 0.7; }
+        .active-line { background: var(--highlight) !important; color: black !important; opacity: 1; font-weight: bold; }
+
+        /* Điều khiển */
+        .controls { margin-top: 20px; display: flex; gap: 10px; align-items: center; }
+        button { padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; background: var(--primary); color: white; font-weight: bold; }
+        button:hover { opacity: 0.8; }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+        .speed-control { margin-left: 20px; }
+    </style>
+</head>
+<body>
+
+    <h1>Mô phỏng Giải thuật Chèn (Insertion Sort)</h1>
+
+    <div class="main-container">
+        <!-- Trực quan hóa -->
+        <div class="visualizer" id="visualizer"></div>
+
+        <!-- Hiển thị Code -->
+        <div class="code-panel" id="codePanel">
+            <div class="code-line" id="line1">for (let i = 1; i < n; i++) {</div>
+            <div class="code-line" id="line2">&nbsp;&nbsp;let key = arr[i];</div>
+            <div class="code-line" id="line3">&nbsp;&nbsp;let j = i - 1;</div>
+            <div class="code-line" id="line4">&nbsp;&nbsp;while (j >= 0 && arr[j] > key) {</div>
+            <div class="code-line" id="line5">&nbsp;&nbsp;&nbsp;&nbsp;arr[j + 1] = arr[j];</div>
+            <div class="code-line" id="line6">&nbsp;&nbsp;&nbsp;&nbsp;j--;</div>
+            <div class="code-line" id="line7">&nbsp;&nbsp;}</div>
+            <div class="code-line" id="line8">&nbsp;&nbsp;arr[j + 1] = key;</div>
+            <div class="code-line" id="line9">}</div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <button onclick="resetArray()">Tạo mảng mới</button>
+        <button id="playBtn" onclick="startSort()">Chạy tự động (Play)</button>
+        <button id="nextBtn" onclick="nextStep()">Bước tiếp theo (Next)</button>
+        <div class="speed-control">
+            Tốc độ: <input type="range" id="speed" min="100" max="1000" value="500" step="100">
+        </div>
+    </div>
+
+    <script>
+        let array = [];
+        const n = 10;
+        let isSorting = false;
+        let steps = [];
+        let currentStepIndex = 0;
+
+        // Khởi tạo mảng ngẫu nhiên
+        function resetArray() {
+            array = Array.from({length: n}, () => Math.floor(Math.random() * 90) + 10);
+            isSorting = false;
+            currentStepIndex = 0;
+            renderBars();
+            generateSteps();
+            clearHighlights();
+            document.getElementById('playBtn').disabled = false;
+            document.getElementById('nextBtn').disabled = false;
+        }
+
+        // Vẽ các thanh bar
+        function renderBars(highlightIndices = [], compareIndices = [], keyIndex = -1) {
+            const container = document.getElementById('visualizer');
+            container.innerHTML = '';
+            array.forEach((val, idx) => {
+                const bar = document.createElement('div');
+                bar.className = 'bar';
+                bar.style.height = `${val * 3}px`;
+                
+                if (idx === keyIndex) bar.style.background = '#e67e22'; // Màu cam cho key
+                else if (compareIndices.includes(idx)) bar.style.background = '#f1c40f'; // Màu vàng khi so sánh
+                else if (idx < currentStepIndex_I) bar.style.background = '#2ecc71'; // Màu xanh cho phần đã sắp xếp
+
+                bar.innerHTML = `<div class="bar-label">${val}</div>`;
+                container.appendChild(bar);
+            });
+        }
+
+        // Highlight dòng code
+        function highlightLine(lineNum) {
+            clearHighlights();
+            if(lineNum) {
+                const el = document.getElementById(`line${lineNum}`);
+                if(el) el.classList.add('active-line');
+            }
+        }
+
+        function clearHighlights() {
+            document.querySelectorAll('.code-line').forEach(l => l.classList.remove('active-line'));
+        }
+
+        let currentStepIndex_I = 0; // Để theo dõi vùng đã xong
+
+        // Thuật toán Insertion Sort và lưu lại các bước
+        function generateSteps() {
+            steps = [];
+            let tempArr = [...array];
+            
+            for (let i = 1; i < tempArr.length; i++) {
+                steps.push({ type: 'highlight', line: 1, i: i });
+                let key = tempArr[i];
+                steps.push({ type: 'highlight', line: 2, key: key, i: i });
+                let j = i - 1;
+                steps.push({ type: 'highlight', line: 3, j: j });
+
+                while (j >= 0 && tempArr[j] > key) {
+                    steps.push({ type: 'highlight', line: 4, compare: [j], j: j });
+                    tempArr[j + 1] = tempArr[j];
+                    steps.push({ type: 'move', line: 5, arr: [...tempArr], compare: [j], j: j });
+                    j--;
+                    steps.push({ type: 'highlight', line: 6, j: j });
+                }
+                steps.push({ type: 'highlight', line: 4, compare: (j >=0 ? [j] : []), j: j }); // Lần check cuối của while
+                tempArr[j + 1] = key;
+                steps.push({ type: 'move', line: 8, arr: [...tempArr], i: i });
+            }
+            steps.push({ type: 'highlight', line: 9 });
+        }
+
+        // Thực hiện một bước
+        function nextStep() {
+            if (currentStepIndex >= steps.length) {
+                alert("Đã sắp xếp xong!");
+                return;
+            }
+
+            const step = steps[currentStepIndex];
+            highlightLine(step.line);
+
+            if (step.arr) {
+                array = [...step.arr];
+            }
+            
+            currentStepIndex_I = step.i || currentStepIndex_I;
+            renderBars([], step.compare || [], step.i);
+
+            currentStepIndex++;
+        }
+
+        // Chạy tự động
+        async function startSort() {
+            document.getElementById('playBtn').disabled = true;
+            document.getElementById('nextBtn').disabled = true;
+            while (currentStepIndex < steps.length) {
+                nextStep();
+                let speed = 1100 - document.getElementById('speed').value;
+                await new Promise(r => setTimeout(r, speed));
+            }
+        }
+
+        // Khởi động lần đầu
+        resetArray();
+    </script>
+</body>
+</html>

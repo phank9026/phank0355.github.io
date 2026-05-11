@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Mô phỏng Insertion Sort chuyên sâu</title>
+    <style>
+        :root {
+            --primary: #3498db;
+            --secondary: #e67e22;
+            --success: #2ecc71;
+            --bg: #f0f2f5;
+            --code-bg: #2d3436;
+            --log-bg: #ffffff;
+            --highlight: #f1c40f;
+        }
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--bg); margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        
+        .header { text-align: center; margin-bottom: 20px; }
+
+        /* Layout 3 cột */
+        .main-container { 
+            display: grid; 
+            grid-template-columns: 1.2fr 1fr 1fr; 
+            gap: 15px; 
+            width: 98%; 
+            max-width: 1400px; 
+            height: 550px; 
+        }
+
+        /* 1. Vùng Visualizer */
+        .panel { background: white; border-radius: 8px; padding: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); display: flex; flex-direction: column; overflow: hidden; }
+        .visualizer { flex-grow: 1; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 10px; border-bottom: 2px solid #eee; }
+        .bar { width: 35px; margin: 0 3px; background: var(--primary); transition: all 0.2s; position: relative; border-radius: 4px 4px 0 0; }
+        .bar-label { position: absolute; top: -25px; width: 100%; text-align: center; font-size: 12px; font-weight: bold; }
+
+        /* 2. Vùng Code */
+        .code-panel { background: var(--code-bg); color: #dfe6e9; font-family: 'Consolas', monospace; font-size: 13.5px; }
+        .code-line { padding: 3px 10px; border-radius: 3px; opacity: 0.6; border-left: 3px solid transparent; }
+        .active-line { background: #444; opacity: 1; border-left: 3px solid var(--highlight); color: white; }
+
+        /* 3. Vùng History Log */
+        .history-panel { background: var(--log-bg); border-left: 5px solid var(--primary); }
+        .log-container { flex-grow: 1; overflow-y: auto; padding: 10px; font-size: 13px; display: flex; flex-direction: column; gap: 5px; }
+        .log-entry { padding: 8px; border-bottom: 1px solid #eee; animation: fadeIn 0.3s; line-height: 1.4; }
+        .log-entry.important { background: #fff3cd; border-radius: 4px; }
+        .log-time { color: #888; font-size: 11px; margin-right: 5px; }
+
+        /* Controls */
+        .controls { margin-top: 20px; background: white; padding: 15px 30px; border-radius: 50px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); display: flex; gap: 15px; align-items: center; }
+        button { padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; background: var(--primary); color: white; font-weight: bold; transition: 0.2s; }
+        button:hover { background: #2980b9; transform: translateY(-2px); }
+        button:disabled { background: #ccc; transform: none; }
+        input[type=range] { cursor: pointer; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: translateX(0); } }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>Mô phỏng Giải thuật Chèn (Insertion Sort)</h1>
+        <p>Quan sát cách dữ liệu di chuyển đồng bộ với mã lệnh và lịch sử thực thi</p>
+    </div>
+
+    <div class="main-container">
+        <!-- CỘT 1: TRỰC QUAN -->
+        <div class="panel">
+            <h3 style="margin-top:0">Biểu đồ mảng</h3>
+            <div class="visualizer" id="visualizer"></div>
+            <div id="status-text" style="margin-top:10px; font-weight:bold; color: var(--secondary)">Sẵn sàng!</div>
+        </div>
+
+        <!-- CỘT 2: CODE -->
+        <div class="panel code-panel" id="codePanel">
+            <h3 style="color: white; margin-top:0">Mã lệnh (JavaScript)</h3>
+            <div class="code-line" id="line1">for (let i = 1; i < n; i++) {</div>
+            <div class="code-line" id="line2">&nbsp;&nbsp;let key = arr[i];</div>
+            <div class="code-line" id="line3">&nbsp;&nbsp;let j = i - 1;</div>
+            <div class="code-line" id="line4">&nbsp;&nbsp;while (j >= 0 && arr[j] > key) {</div>
+            <div class="code-line" id="line5">&nbsp;&nbsp;&nbsp;&nbsp;arr[j + 1] = arr[j];</div>
+            <div class="code-line" id="line6">&nbsp;&nbsp;&nbsp;&nbsp;j--;</div>
+            <div class="code-line" id="line7">&nbsp;&nbsp;}</div>
+            <div class="code-line" id="line8">&nbsp;&nbsp;arr[j + 1] = key;</div>
+            <div class="code-line" id="line9">}</div>
+        </div>
+
+        <!-- CỘT 3: LỊCH SỬ -->
+        <div class="panel history-panel">
+            <h3 style="margin-top:0">Lịch sử thực thi</h3>
+            <div class="log-container" id="logContent">
+                <div class="log-entry">Chào mừng! Nhấn "Next" hoặc "Play" để bắt đầu.</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <button onclick="resetArray()" style="background: #95a5a6;">Tạo mảng mới</button>
+        <button id="nextBtn" onclick="nextStep()" style="background: var(--success);">Bước tiếp theo (Next)</button>
+        <button id="playBtn" onclick="startSort()">Chạy tự động (Play)</button>
+        <div style="border-left: 1px solid #ddd; height: 30px; margin: 0 10px;"></div>
+        <span>Tốc độ:</span>
+        <input type="range" id="speed" min="100" max="1000" value="600">
+    </div>
+
+    <script>
+        let array = [];
+        const n = 8;
+        let steps = [];
+        let currentStepIndex = 0;
+        let isAutoPlaying = false;
+
+        function resetArray() {
+            array = Array.from({length: n}, () => Math.floor(Math.random() * 80) + 10);
+            currentStepIndex = 0;
+            isAutoPlaying = false;
+            document.getElementById('logContent').innerHTML = '<div class="log-entry">Đã tạo mảng mới.</div>';
+            document.getElementById('playBtn').disabled = false;
+            document.getElementById('nextBtn').disabled = false;
+            document.getElementById('status-text').innerText = "Sẵn sàng!";
+            generateSteps();
+            renderBars();
+            clearHighlights();
+        }
+
+        function generateSteps() {
+            steps = [];
+            let tempArr = [...array];
+            
+            for (let i = 1; i < tempArr.length; i++) {
+                steps.push({ 
+                    line: 1, i: i, 
+                    msg: `<b>Vòng lặp i=${i}</b>: Bắt đầu tìm vị trí chèn cho phần tử thứ ${i}.` 
+                });
+                
+                let key = tempArr[i];
+                steps.push({ 
+                    line: 2, i: i, key: key, 
+                    msg: `Gán <b>key = ${key}</b> (giá trị đang xét).` 
+                });
+
+                let j = i - 1;
+                steps.push({ 
+                    line: 3, i: i, j: j, 
+                    msg: `Bắt đầu so sánh ngược từ vị trí j = ${j}.` 
+                });
+
+                while (j >= 0 && tempArr[j] > key) {
+                    steps.push({ 
+                        line: 4, i: i, j: j, compare: [j], 
+                        msg: `Kiểm tra: arr[${j}] (${tempArr[j]}) có lớn hơn key (${key}) không? <b>Có!</b>` 
+                    });
+
+                    tempArr[j + 1] = tempArr[j];
+                    steps.push({ 
+                        line: 5, i: i, j: j, arr: [...tempArr], 
+                        msg: `Dịch chuyển ${tempArr[j]} sang phải (vị trí ${j+1}).` 
+                    });
+
+                    j--;
+                    steps.push({ 
+                        line: 6, i: i, j: j, 
+                        msg: `Giảm j xuống còn ${j}.` 
+                    });
+                }
+
+                // Thông báo khi thoát While
+                let reason = j < 0 ? "j < 0" : `arr[${j}] (${tempArr[j]}) không lớn hơn key (${key})`;
+                steps.push({ 
+                    line: 4, i: i, j: j, compare: (j>=0?[j]:[]),
+                    msg: `Dừng vòng lặp while vì: ${reason}.` 
+                });
+
+                tempArr[j + 1] = key;
+                steps.push({ 
+                    line: 8, i: i, arr: [...tempArr], 
+                    msg: `<b>Chèn key (${key})</b> vào vị trí trống tại index ${j + 1}.`,
+                    important: true 
+                });
+            }
+            steps.push({ line: 9, msg: "Hoàn thành! Mảng đã được sắp xếp.", important: true });
+        }
+
+        function renderBars(compareIndices = [], keyIndex = -1, sortedUntil = -1) {
+            const container = document.getElementById('visualizer');
+            container.innerHTML = '';
+            array.forEach((val, idx) => {
+                const bar = document.createElement('div');
+                bar.className = 'bar';
+                bar.style.height = `${val * 4}px`;
+                
+                if (idx === keyIndex) {
+                    bar.style.background = 'var(--secondary)';
+                    bar.style.boxShadow = '0 0 10px rgba(230, 126, 34, 0.5)';
+                }
+                else if (compareIndices.includes(idx)) bar.style.background = 'var(--highlight)';
+                else if (idx <= sortedUntil) bar.style.background = 'var(--success)';
+
+                bar.innerHTML = `<div class="bar-label">${val}</div>`;
+                container.appendChild(bar);
+            });
+        }
+
+        function addLog(message, important = false) {
+            const logContent = document.getElementById('logContent');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${important ? 'important' : ''}`;
+            const now = new Date();
+            const timeStr = `${now.getHours()}:${now.getMinutes()}:${now.getSeconds()}`;
+            entry.innerHTML = `<span class="log-time">[${timeStr}]</span> ${message}`;
+            logContent.appendChild(entry);
+            logContent.scrollTop = logContent.scrollHeight;
+        }
+
+        function highlightLine(lineNum) {
+            document.querySelectorAll('.code-line').forEach(l => l.classList.remove('active-line'));
+            if(lineNum) document.getElementById(`line${lineNum}`).classList.add('active-line');
+        }
+
+        function nextStep() {
+            if (currentStepIndex >= steps.length) {
+                isAutoPlaying = false;
+                document.getElementById('status-text').innerText = "Hoàn thành!";
+                return false;
+            }
+
+            const step = steps[currentStepIndex];
+            
+            // Cập nhật giao diện
+            highlightLine(step.line);
+            if (step.arr) array = [...step.arr];
+            renderBars(step.compare || [], step.key !== undefined ? step.i : -1, step.i - 1);
+            addLog(step.msg, step.important);
+            
+            if(step.important) document.getElementById('status-text').innerText = step.msg.replace(/<\/?[^>]+(>|$)/g, "");
+
+            currentStepIndex++;
+            return true;
+        }
+
+        async function startSort() {
+            if(isAutoPlaying) return;
+            isAutoPlaying = true;
+            document.getElementById('playBtn').disabled = true;
+            
+            while (isAutoPlaying) {
+                let hasNext = nextStep();
+                if (!hasNext) break;
+                let speed = 1100 - document.getElementById('speed').value;
+                await new Promise(r => setTimeout(r, speed));
+            }
+            
+            document.getElementById('playBtn').disabled = false;
+        }
+
+        clearHighlights = () => document.querySelectorAll('.code-line').forEach(l => l.classList.remove('active-line'));
+
+        resetArray();
+    </script>
+</body>
+</html>

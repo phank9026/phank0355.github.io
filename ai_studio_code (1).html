@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mô phỏng Interchange Sort với Lịch sử</title>
+    <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; display: flex; flex-direction: column; align-items: center; background-color: #f0f2f5; margin: 0; padding: 20px; }
+        .container { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 90%; max-width: 900px; }
+        h2 { color: #2c3e50; margin-top: 0; }
+        
+        /* Đồ họa mảng */
+        .array-container { display: flex; justify-content: center; align-items: flex-end; height: 180px; margin: 20px 0; padding: 10px; background: #fdfdfd; border-radius: 8px; border: 1px dashed #ccc; }
+        .bar { width: 35px; margin: 0 4px; background-color: #3498db; display: flex; justify-content: center; align-items: flex-end; color: white; font-size: 12px; font-weight: bold; padding-bottom: 5px; transition: all 0.2s ease; border-radius: 4px 4px 0 0; position: relative; }
+        .bar-index { position: absolute; bottom: -25px; color: #7f8c8d; font-size: 10px; }
+
+        /* Điều khiển */
+        .controls { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-bottom: 20px; }
+        input[type="text"] { padding: 8px; border: 1px solid #ddd; border-radius: 5px; width: 180px; }
+        button { padding: 8px 15px; cursor: pointer; border: none; border-radius: 5px; color: white; font-weight: bold; transition: 0.2s; }
+        .btn-run { background-color: #3498db; }
+        .btn-run:hover { background-color: #2980b9; }
+        .btn-reset { background-color: #e67e22; }
+        button:disabled { background-color: #bdc3c7; cursor: not-allowed; }
+
+        /* Lịch sử lệnh */
+        .history-container { margin-top: 20px; }
+        .history-title { font-weight: bold; margin-bottom: 5px; color: #34495e; display: flex; justify-content: space-between; }
+        #historyLog { height: 200px; overflow-y: auto; background: #2c3e50; color: #ecf0f1; padding: 15px; border-radius: 8px; font-family: 'Consolas', 'Courier New', monospace; font-size: 13px; line-height: 1.6; }
+        .log-entry { margin-bottom: 4px; border-bottom: 1px solid #3e4f5f; padding-bottom: 2px; }
+        .log-compare { color: #bdc3c7; }
+        .log-swap { color: #f1c40f; font-weight: bold; }
+        .log-success { color: #2ecc71; font-weight: bold; }
+        .log-header { color: #3498db; font-weight: bold; text-decoration: underline; }
+
+        /* Màu trạng thái thanh */
+        .comparing { background-color: #e74c3c !important; transform: scale(1.05); }
+        .selected { background-color: #f1c40f !important; }
+        .sorted { background-color: #27ae60 !important; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>Mô phỏng Đổi chỗ trực tiếp (Interchange Sort)</h2>
+        
+        <div class="controls">
+            <input type="text" id="arrayInput" placeholder="Nhập mảng: 5, 2, 9, 1...">
+            <button class="btn-reset" onclick="resetArray()">Tạo mảng</button>
+            <button class="btn-run" id="sortBtn" onclick="interchangeSort()">Bắt đầu chạy</button>
+            <div style="margin-left: 20px; font-size: 14px;">
+                Tốc độ: <input type="range" id="speed" min="100" max="2000" value="800" style="direction: rtl;">
+            </div>
+        </div>
+
+        <div class="array-container" id="arrayContainer"></div>
+        
+        <div class="history-container">
+            <div class="history-title">
+                <span>Lịch sử lệnh thực hiện:</span>
+                <span id="stepCounter">Bước: 0</span>
+            </div>
+            <div id="historyLog">
+                <div class="log-entry">Đang chờ lệnh...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let array = [];
+        let stepCount = 0;
+        const container = document.getElementById('arrayContainer');
+        const historyLog = document.getElementById('historyLog');
+        const stepCounter = document.getElementById('stepCounter');
+
+        function addLog(message, type = '') {
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            entry.innerHTML = `> ${message}`;
+            historyLog.appendChild(entry);
+            historyLog.scrollTop = historyLog.scrollHeight;
+        }
+
+        function resetArray() {
+            const input = document.getElementById('arrayInput').value;
+            if (input) {
+                array = input.split(',').map(Number).filter(n => !isNaN(n));
+            } else {
+                array = Array.from({ length: 8 }, () => Math.floor(Math.random() * 50) + 5);
+            }
+            stepCount = 0;
+            stepCounter.innerText = "Bước: 0";
+            historyLog.innerHTML = '';
+            addLog("Mảng mới đã tạo: [" + array.join(', ') + "]", "log-header");
+            renderArray();
+            document.getElementById('sortBtn').disabled = false;
+        }
+
+        function renderArray() {
+            container.innerHTML = '';
+            array.forEach((val, index) => {
+                const bar = document.createElement('div');
+                bar.classList.add('bar');
+                bar.id = `bar-${index}`;
+                bar.style.height = `${val * 3}px`;
+                bar.innerHTML = `${val} <span class="bar-index">${index}</span>`;
+                container.appendChild(bar);
+            });
+        }
+
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, document.getElementById('speed').value));
+        }
+
+        async function interchangeSort() {
+            const btn = document.getElementById('sortBtn');
+            btn.disabled = true;
+            let n = array.length;
+            const bars = document.getElementsByClassName('bar');
+
+            addLog("BẮT ĐẦU GIẢI THUẬT INTERCHANGE SORT", "log-header");
+
+            for (let i = 0; i < n - 1; i++) {
+                bars[i].classList.add('selected');
+                addLog(`Vòng lặp i=${i}: Cố định vị trí thứ ${i}`, "log-header");
+                
+                for (let j = i + 1; j < n; j++) {
+                    stepCount++;
+                    stepCounter.innerText = `Bước: ${stepCount}`;
+                    
+                    bars[j].classList.add('comparing');
+                    addLog(`So sánh A[${i}](${array[i]}) và A[${j}](${array[j]})`, "log-compare");
+                    
+                    await sleep();
+
+                    if (array[j] < array[i]) {
+                        addLog(`Phát hiện ${array[j]} < ${array[i]} -> Đổi chỗ ngay!`, "log-swap");
+                        
+                        // Hoán vị giá trị
+                        let temp = array[i];
+                        array[i] = array[j];
+                        array[j] = temp;
+
+                        // Cập nhật đồ họa
+                        bars[i].style.height = `${array[i] * 3}px`;
+                        bars[i].innerHTML = `${array[i]} <span class="bar-index">${i}</span>`;
+                        bars[j].style.height = `${array[j] * 3}px`;
+                        bars[j].innerHTML = `${array[j]} <span class="bar-index">${j}</span>`;
+                        
+                        await sleep();
+                    }
+
+                    bars[j].classList.remove('comparing');
+                }
+                
+                bars[i].classList.remove('selected');
+                bars[i].classList.add('sorted');
+                addLog(`Kết quả sau vòng lặp i=${i}: Vị trí ${i} đã chuẩn.`, "log-success");
+            }
+            
+            bars[n-1].classList.add('sorted');
+            addLog("SẮP XẾP HOÀN TẤT!", "log-success");
+            addLog("Mảng cuối cùng: [" + array.join(', ') + "]", "log-header");
+        }
+
+        // Khởi tạo ban đầu
+        resetArray();
+    </script>
+</body>
+</html>

@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mô phỏng Giải thuật Đổi chỗ trực tiếp</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; flex-direction: column; align-items: center; background-color: #f0f2f5; }
+        .container { margin-top: 20px; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 80%; max-width: 800px; }
+        .array-container { display: flex; justify-content: center; align-items: flex-end; height: 200px; margin: 20px 0; border-bottom: 2px solid #333; }
+        .bar { width: 40px; margin: 0 5px; background-color: #3498db; display: flex; justify-content: center; align-items: flex-end; color: white; font-weight: bold; padding-bottom: 5px; transition: all 0.3s; border-radius: 4px 4px 0 0; }
+        .controls { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+        button { padding: 10px 15px; cursor: pointer; border: none; border-radius: 5px; background-color: #2ecc71; color: white; font-weight: bold; }
+        button:disabled { background-color: #bdc3c7; cursor: not-allowed; }
+        input { padding: 8px; border: 1px solid #ddd; border-radius: 5px; width: 200px; }
+        .log { margin-top: 20px; padding: 10px; background: #f9f9f9; border-left: 5px solid #e74c3c; width: 100%; min-height: 50px; }
+        /* Màu sắc trạng thái */
+        .comparing { background-color: #e74c3c !important; transform: scale(1.1); }
+        .selected { background-color: #f1c40f !important; }
+        .sorted { background-color: #27ae60 !important; }
+    </style>
+</head>
+<body>
+
+    <h2>Mô phỏng Đổi chỗ trực tiếp (Interchange Sort)</h2>
+
+    <div class="container">
+        <div class="controls">
+            <input type="text" id="arrayInput" placeholder="VD: 5, 2, 9, 1, 5, 6">
+            <button onclick="resetArray()">Tạo mảng</button>
+            <button id="sortBtn" onclick="interchangeSort()" style="background-color: #3498db;">Bắt đầu sắp xếp</button>
+            <button onclick="window.location.reload()" style="background-color: #95a5a6;">Làm mới</button>
+        </div>
+
+        <div class="array-container" id="arrayContainer"></div>
+        
+        <div id="status" class="log">Nhấn "Tạo mảng" sau đó chọn "Bắt đầu sắp xếp"</div>
+        
+        <div style="margin-top: 10px;">
+            Tốc độ: <input type="range" id="speed" min="100" max="2000" value="800" step="100" style="direction: rtl;">
+        </div>
+    </div>
+
+    <script>
+        let array = [];
+        const container = document.getElementById('arrayContainer');
+        const status = document.getElementById('status');
+
+        function resetArray() {
+            const input = document.getElementById('arrayInput').value;
+            if (input) {
+                array = input.split(',').map(Number).filter(n => !isNaN(n));
+            } else {
+                array = Array.from({ length: 8 }, () => Math.floor(Math.random() * 50) + 5);
+            }
+            renderArray();
+            status.innerText = "Mảng đã sẵn sàng!";
+            document.getElementById('sortBtn').disabled = false;
+        }
+
+        function renderArray() {
+            container.innerHTML = '';
+            array.forEach((val, index) => {
+                const bar = document.createElement('div');
+                bar.classList.add('bar');
+                bar.id = `bar-${index}`;
+                bar.style.height = `${val * 3}px`;
+                bar.innerText = val;
+                container.appendChild(bar);
+            });
+        }
+
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, document.getElementById('speed').value));
+        }
+
+        async function interchangeSort() {
+            document.getElementById('sortBtn').disabled = true;
+            let n = array.length;
+            const bars = document.getElementsByClassName('bar');
+
+            for (let i = 0; i < n - 1; i++) {
+                // Đánh dấu phần tử i đang xét
+                bars[i].classList.add('selected');
+                
+                for (let j = i + 1; j < n; j++) {
+                    // Đánh dấu phần tử j đang so sánh với i
+                    bars[j].classList.add('comparing');
+                    status.innerHTML = `Đang so sánh <strong>A[${i}]</strong> (${array[i]}) và <strong>A[${j}]</strong> (${array[j]})`;
+                    
+                    await sleep();
+
+                    if (array[j] < array[i]) {
+                        status.innerHTML = `Vì ${array[j]} < ${array[i]} nên <strong>ĐỔI CHỖ</strong>`;
+                        
+                        // Đổi giá trị trong mảng
+                        let temp = array[i];
+                        array[i] = array[j];
+                        array[j] = temp;
+
+                        // Cập nhật giao diện
+                        bars[i].style.height = `${array[i] * 3}px`;
+                        bars[i].innerText = array[i];
+                        bars[j].style.height = `${array[j] * 3}px`;
+                        bars[j].innerText = array[j];
+                        
+                        await sleep();
+                    }
+
+                    bars[j].classList.remove('comparing');
+                }
+                
+                // Sau mỗi vòng lặp i, phần tử tại i đã đúng vị trí
+                bars[i].classList.remove('selected');
+                bars[i].classList.add('sorted');
+            }
+            bars[n-1].classList.add('sorted');
+            status.innerText = "Sắp xếp hoàn tất!";
+        }
+
+        // Khởi tạo mặc định
+        resetArray();
+    </script>
+</body>
+</html>

@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mô phỏng Thuật toán Sắp xếp Chèn</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; flex-direction: column; align-items: center; background-color: #f4f7f6; padding: 20px; }
+        .container { background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 800px; }
+        h1 { color: #2c3e50; text-align: center; }
+        
+        /* Array Visualization */
+        .array-container { display: flex; justify-content: center; align-items: flex-end; height: 150px; margin: 20px 0; gap: 10px; }
+        .bar { width: 50px; display: flex; flex-direction: column; align-items: center; transition: all 0.3s; position: relative; border-radius: 5px 5px 0 0; }
+        .bar-value { margin-bottom: 5px; font-weight: bold; }
+        .bar-box { width: 100%; background-color: #3498db; border: 1px solid #2980b9; }
+
+        /* Status Colors */
+        .sorted { background-color: #2ecc71 !important; } /* Xanh lá - Đã sắp xếp */
+        .active { background-color: #e74c3c !important; color: white; transform: translateY(-20px); } /* Đỏ - Phần tử đang chèn */
+        .comparing { background-color: #f1c40f !important; } /* Vàng - Đang so sánh */
+
+        /* Controls */
+        .controls { display: flex; justify-content: center; gap: 10px; margin-bottom: 20px; }
+        button { padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; transition: 0.2s; }
+        .btn-next { background-color: #2ecc71; color: white; }
+        .btn-reset { background-color: #95a5a6; color: white; }
+        button:hover { opacity: 0.8; }
+        button:disabled { background-color: #bdc3c7; cursor: not-allowed; }
+
+        /* History Log */
+        .history { border-top: 2px solid #eee; padding-top: 15px; max-height: 200px; overflow-y: auto; }
+        .history h3 { margin-top: 0; font-size: 18px; color: #34495e; }
+        .log-entry { font-size: 14px; padding: 5px 0; border-bottom: 1px solid #f9f9f9; color: #555; }
+        .log-entry span { font-weight: bold; color: #2980b9; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Mô phỏng Insertion Sort</h1>
+    
+    <div class="controls">
+        <button class="btn-reset" onclick="resetArray()">Tạo mảng mới</button>
+        <button class="btn-next" id="nextBtn" onclick="nextStep()">Bước tiếp theo ➜</button>
+    </div>
+
+    <div class="array-container" id="arrayDisplay"></div>
+
+    <div class="history">
+        <h3>Lịch sử tiến trình</h3>
+        <div id="log">
+            <div class="log-entry">Nhấn "Bước tiếp theo" để bắt đầu sắp xếp.</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let array = [];
+    let i = 1; // Chỉ số vòng lặp ngoài
+    let j = 0; // Chỉ số vòng lặp trong
+    let currentKey = null;
+    let isMoving = false;
+    let stepDescription = "";
+    let isFinished = false;
+
+    function resetArray() {
+        // Tạo mảng ngẫu nhiên 8 phần tử
+        array = Array.from({length: 8}, () => Math.floor(Math.random() * 90) + 10);
+        i = 1;
+        j = -1;
+        currentKey = null;
+        isMoving = false;
+        isFinished = false;
+        document.getElementById('nextBtn').disabled = false;
+        document.getElementById('log').innerHTML = '<div class="log-entry">Mảng mới được khởi tạo: [' + array.join(', ') + ']</div>';
+        renderArray();
+    }
+
+    function renderArray(activeIndex = -1, compareIndex = -1) {
+        const container = document.getElementById('arrayDisplay');
+        container.innerHTML = '';
+        
+        array.forEach((val, idx) => {
+            const bar = document.createElement('div');
+            bar.className = 'bar';
+            
+            // Xác định màu sắc dựa trên trạng thái
+            let statusClass = '';
+            if (idx === activeIndex) statusClass = 'active';
+            else if (idx === compareIndex) statusClass = 'comparing';
+            else if (idx < i) statusClass = 'sorted';
+
+            const height = val * 1.5;
+            bar.innerHTML = `
+                <div class="bar-value">${val}</div>
+                <div class="bar-box ${statusClass}" style="height: ${height}px"></div>
+                <div style="font-size: 10px; margin-top: 5px;">idx: ${idx}</div>
+            `;
+            container.appendChild(bar);
+        });
+    }
+
+    function addLog(msg) {
+        const log = document.getElementById('log');
+        const entry = document.createElement('div');
+        entry.className = 'log-entry';
+        entry.innerHTML = `<span>Bước ${i}:</span> ${msg}`;
+        log.prepend(entry);
+    }
+
+    function nextStep() {
+        if (isFinished) return;
+
+        // Nếu bắt đầu một lượt chèn mới (vòng lặp i)
+        if (!isMoving) {
+            if (i < array.length) {
+                currentKey = array[i];
+                j = i - 1;
+                isMoving = true;
+                stepDescription = `Lấy giá trị <b>${currentKey}</b> (vị trí ${i}) để chèn vào phần đã sắp xếp.`;
+                addLog(stepDescription);
+                renderArray(i, j);
+            } else {
+                isFinished = true;
+                document.getElementById('nextBtn').disabled = true;
+                addLog("Hoàn thành! Mảng đã được sắp xếp xong.");
+                renderArray();
+                return;
+            }
+        } else {
+            // Đang trong quá trình so sánh và dịch chuyển (vòng lặp j)
+            if (j >= 0 && array[j] > currentKey) {
+                addLog(`So sánh <b>${currentKey}</b> < <b>${array[j]}</b>. Dịch chuyển ${array[j]} sang phải.`);
+                array[j + 1] = array[j];
+                j--;
+                renderArray(-1, j); // Hiển thị trạng thái dịch chuyển
+            } else {
+                // Chèn Key vào vị trí đúng
+                array[j + 1] = currentKey;
+                addLog(`Đã tìm được vị trí! Chèn <b>${currentKey}</b> vào vị trí <b>${j + 1}</b>.`);
+                i++;
+                isMoving = false;
+                renderArray();
+            }
+        }
+    }
+
+    // Khởi tạo lần đầu
+    resetArray();
+</script>
+
+</body>
+</html>
